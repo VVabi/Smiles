@@ -39,7 +39,7 @@ enable_testing()
 add_executable(smiles_tests
     src/smiles_tests.cpp
 )
-target_link_libraries(smiles_tests PRIVATE smiles_lib GTest::gtest)
+target_link_libraries(smiles_tests PRIVATE smiles_lib GTest::gtest_main)
 
 include(GoogleTest)
 gtest_discover_tests(smiles_tests)
