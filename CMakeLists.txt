@@ -54,6 +54,6 @@ add_test(
     NAME Smiles.PreprocessorDummyOutput
     COMMAND ${CMAKE_COMMAND}
         -DTEST_EXECUTABLE=$<TARGET_FILE:smiles>
-        -DTEST_INPUT=${PROJECT_SOURCE_DIR}/examples/dummy.sm
+        -DTEST_INPUT=${PROJECT_SOURCE_DIR}/tests/test_resources/dummy.sm
         -P ${PROJECT_SOURCE_DIR}/tests/assert_dummy_preprocessor_output.cmake
 )
