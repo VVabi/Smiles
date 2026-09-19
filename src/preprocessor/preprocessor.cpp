@@ -98,15 +98,16 @@ PreprocessedFile preprocess_file(const FileLikeObject& file_obj) {
     const std::string using_marker = "#using ";
     while (std::getline(*istrm, line)) {
         const std::size_t line_start = current_position;
+        const std::size_t delimiter_length = istrm->eof() ? 0u : 1u;
 
         if (line.rfind(import_marker, 0) == 0) {
             auto path = line.substr(import_marker.size());  // Extract the path after #import (including space)
             // TODO(vabi): trim whitespaces from path
             include_paths.push_back(path);
-            append_skipped_tokens(skipped_tokens, output_position, line.size() + 1);
-            skipped_character_count += line.size() + 1;
-            append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, line.size() + 1, true);
-            current_position += line.size() + 1;  // +1 for the newline character
+            append_skipped_tokens(skipped_tokens, output_position, line.size() + delimiter_length);
+            skipped_character_count += line.size() + delimiter_length;
+            append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, line.size() + delimiter_length, true);
+            current_position += line.size() + delimiter_length;
             continue;
         }
 
@@ -114,10 +115,10 @@ PreprocessedFile preprocess_file(const FileLikeObject& file_obj) {
             auto ns = line.substr(using_marker.size());  // Extract the namespace after #using (including space)
             // TODO(vabi): trim whitespaces from ns
             using_namespaces.push_back(ns);
-            append_skipped_tokens(skipped_tokens, output_position, line.size() + 1);
-            skipped_character_count += line.size() + 1;
-            append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, line.size() + 1, true);
-            current_position += line.size() + 1;  // +1 for the newline character
+            append_skipped_tokens(skipped_tokens, output_position, line.size() + delimiter_length);
+            skipped_character_count += line.size() + delimiter_length;
+            append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, line.size() + delimiter_length, true);
+            current_position += line.size() + delimiter_length;
             continue;
         }
 
@@ -137,40 +138,46 @@ PreprocessedFile preprocess_file(const FileLikeObject& file_obj) {
             }
 
             if (!has_non_whitespace_prefix) {
-                append_skipped_tokens(skipped_tokens, output_position, line.size() + 1);
-                skipped_character_count += line.size() + 1;
-                append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, line.size() + 1, true);
+                append_skipped_tokens(skipped_tokens, output_position, line.size() + delimiter_length);
+                skipped_character_count += line.size() + delimiter_length;
+                append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, line.size() + delimiter_length, true);
             } else {
                 append_skipped_tokens(skipped_tokens, output_position + skipped_prefix_start, line.size() - skipped_prefix_start);
-                skipped_character_count += line.size() - skipped_prefix_start + 1;
+                skipped_character_count += line.size() - skipped_prefix_start + delimiter_length;
                 append_pretty_print_skipped_tokens(pretty_print_skipped_tokens,
                                                    output_position + skipped_prefix_start,
-                                                   line.size() - skipped_prefix_start + 1,
+                                                   line.size() - skipped_prefix_start + delimiter_length,
                                                    false);
             }
 
             if (has_non_whitespace_prefix) {
-                output_strm << line.substr(0, skipped_prefix_start) << "\n";
-                output_position += skipped_prefix_start + 1;
+                output_strm << line.substr(0, skipped_prefix_start);
+                if (delimiter_length == 1) {
+                    output_strm << "\n";
+                }
+                output_position += skipped_prefix_start + delimiter_length;
                 has_output = true;
             }
-            current_position += line.size() + 1;  // +1 for the newline character
+            current_position += line.size() + delimiter_length;
             if (has_non_whitespace_prefix) {
                 last_output_end_position = current_position;
             }
             continue;
         }
 
-        current_position += line.size() + 1;  // +1 for the newline character
+        current_position += line.size() + delimiter_length;
         if (line.empty()) {
-            append_skipped_tokens(skipped_tokens, output_position, 1);
-            skipped_character_count += 1;
-            append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, 1, true);
+            append_skipped_tokens(skipped_tokens, output_position, delimiter_length);
+            skipped_character_count += delimiter_length;
+            append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, delimiter_length, true);
             continue;
         }
 
-        output_strm << line << "\n";
-        output_position += line.size() + 1;
+        output_strm << line;
+        if (delimiter_length == 1) {
+            output_strm << "\n";
+        }
+        output_position += line.size() + delimiter_length;
         has_output = true;
         last_output_end_position = current_position;
     }

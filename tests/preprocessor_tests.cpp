@@ -159,7 +159,75 @@ TEST(PreprocessedFileTest, PrettyPrintShowsSkippedTokensInsideOutput) {
               "Using namespaces (0):\n"
               "Output:\n"
               "foo bar\033[31m---SKIPPED 6 tokens---\033[0m\n"
-              "foobar\n");
+              "foobar");
+}
+
+TEST(PreprocessedFileTest, PreservesMissingFinalNewlineForPlainText) {
+    ReplInputObject input(
+        "alpha\n"
+        "beta",
+        "snippet");
+
+    const auto result = preprocess_file(input);
+
+    EXPECT_EQ(result.get_output(),
+              "alpha\n"
+              "beta");
+    EXPECT_EQ(result.get_skipped_character_count(), 0u);
+    EXPECT_TRUE(result.get_navigator().get_skipped_tokens().empty());
+}
+
+TEST(PreprocessedFileTest, PreservesMissingFinalNewlineForInlineCommentLine) {
+    ReplInputObject input(
+        "value = 42 # comment",
+        "snippet");
+
+    const auto result = preprocess_file(input);
+    std::ostringstream output_stream;
+
+    EXPECT_EQ(result.get_output(), "value = 42");
+    EXPECT_EQ(result.get_skipped_character_count(), 10u);
+    const auto& skipped_tokens = result.get_navigator().get_skipped_tokens();
+    ASSERT_EQ(skipped_tokens.size(), 1u);
+    EXPECT_EQ(skipped_tokens[0].start, 10u);
+    EXPECT_EQ(skipped_tokens[0].num_skipped, 10u);
+
+    result.pretty_print(output_stream);
+
+    EXPECT_EQ(output_stream.str(),
+              "Preprocessed file: snippet\n"
+              "Skipped characters: \033[31m10\033[0m\n"
+              "Include paths (0):\n"
+              "Using namespaces (0):\n"
+              "Output:\n"
+              "value = 42\033[31m---SKIPPED 10 tokens---\033[0m");
+}
+
+TEST(PreprocessedFileTest, PreservesMissingFinalNewlineForDirectiveLine) {
+    ReplInputObject input("#import std/math", "snippet");
+
+    const auto result = preprocess_file(input);
+
+    EXPECT_TRUE(result.get_output().empty());
+    EXPECT_EQ(result.get_include_paths(), std::vector<std::string>({"std/math"}));
+    EXPECT_EQ(result.get_skipped_character_count(), 16u);
+    const auto& skipped_tokens = result.get_navigator().get_skipped_tokens();
+    ASSERT_EQ(skipped_tokens.size(), 1u);
+    EXPECT_EQ(skipped_tokens[0].start, 0u);
+    EXPECT_EQ(skipped_tokens[0].num_skipped, 16u);
+}
+
+TEST(PreprocessedFileTest, PreservesMissingFinalNewlineForCommentOnlyLine) {
+    ReplInputObject input("#comment only", "snippet");
+
+    const auto result = preprocess_file(input);
+
+    EXPECT_TRUE(result.get_output().empty());
+    EXPECT_EQ(result.get_skipped_character_count(), 13u);
+    const auto& skipped_tokens = result.get_navigator().get_skipped_tokens();
+    ASSERT_EQ(skipped_tokens.size(), 1u);
+    EXPECT_EQ(skipped_tokens[0].start, 0u);
+    EXPECT_EQ(skipped_tokens[0].num_skipped, 13u);
 }
 
 TEST(PreprocessedFileTest, SkipsWhitespaceBeforeCommentMarker) {
