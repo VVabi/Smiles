@@ -26,7 +26,7 @@ void append_skipped_tokens(std::vector<SkippedTokens>& skipped_tokens,
         return;
     }
 
-    if (!skipped_tokens.empty() && skipped_tokens.back().start + skipped_tokens.back().num_skipped == start) {
+    if (!skipped_tokens.empty() && skipped_tokens.back().start == start) {
         skipped_tokens.back().num_skipped += num_skipped;
         return;
     }
@@ -103,7 +103,7 @@ PreprocessedFile preprocess_file(const FileLikeObject& file_obj) {
             auto path = line.substr(import_marker.size());  // Extract the path after #import (including space)
             // TODO(vabi): trim whitespaces from path
             include_paths.push_back(path);
-            append_skipped_tokens(skipped_tokens, line_start, line.size() + 1);
+            append_skipped_tokens(skipped_tokens, output_position, line.size() + 1);
             skipped_character_count += line.size() + 1;
             append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, line.size() + 1, true);
             current_position += line.size() + 1;  // +1 for the newline character
@@ -114,7 +114,7 @@ PreprocessedFile preprocess_file(const FileLikeObject& file_obj) {
             auto ns = line.substr(using_marker.size());  // Extract the namespace after #using (including space)
             // TODO(vabi): trim whitespaces from ns
             using_namespaces.push_back(ns);
-            append_skipped_tokens(skipped_tokens, line_start, line.size() + 1);
+            append_skipped_tokens(skipped_tokens, output_position, line.size() + 1);
             skipped_character_count += line.size() + 1;
             append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, line.size() + 1, true);
             current_position += line.size() + 1;  // +1 for the newline character
@@ -137,11 +137,11 @@ PreprocessedFile preprocess_file(const FileLikeObject& file_obj) {
             }
 
             if (!has_non_whitespace_prefix) {
-                append_skipped_tokens(skipped_tokens, line_start, line.size() + 1);
+                append_skipped_tokens(skipped_tokens, output_position, line.size() + 1);
                 skipped_character_count += line.size() + 1;
                 append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, line.size() + 1, true);
             } else {
-                append_skipped_tokens(skipped_tokens, line_start + skipped_prefix_start, line.size() - skipped_prefix_start);
+                append_skipped_tokens(skipped_tokens, output_position + skipped_prefix_start, line.size() - skipped_prefix_start);
                 skipped_character_count += line.size() - skipped_prefix_start + 1;
                 append_pretty_print_skipped_tokens(pretty_print_skipped_tokens,
                                                    output_position + skipped_prefix_start,
@@ -163,7 +163,7 @@ PreprocessedFile preprocess_file(const FileLikeObject& file_obj) {
 
         current_position += line.size() + 1;  // +1 for the newline character
         if (line.empty()) {
-            append_skipped_tokens(skipped_tokens, line_start, 1);
+            append_skipped_tokens(skipped_tokens, output_position, 1);
             skipped_character_count += 1;
             append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, 1, true);
             continue;

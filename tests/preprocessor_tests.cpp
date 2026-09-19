@@ -104,14 +104,14 @@ TEST(PreprocessFileTest, ExtractsImportsUsingsAndComments) {
     const auto& navigator = result.get_navigator();
     EXPECT_EQ(navigator.get_file_name(), "snippet");
     EXPECT_EQ(navigator.get_original_position(0), 34u);
-    EXPECT_EQ(navigator.get_original_position(17), 51u);
+    EXPECT_EQ(navigator.get_original_position(17), 78u);
     const auto& skipped_tokens = navigator.get_skipped_tokens();
     ASSERT_EQ(skipped_tokens.size(), 3u);
     EXPECT_EQ(skipped_tokens[0].start, 0u);
     EXPECT_EQ(skipped_tokens[0].num_skipped, 34u);
-    EXPECT_EQ(skipped_tokens[1].start, 44u);
+    EXPECT_EQ(skipped_tokens[1].start, 10u);
     EXPECT_EQ(skipped_tokens[1].num_skipped, 27u);
-    EXPECT_EQ(skipped_tokens[2].start, 83u);
+    EXPECT_EQ(skipped_tokens[2].start, 22u);
     EXPECT_EQ(skipped_tokens[2].num_skipped, 19u);
 }
 
@@ -184,6 +184,27 @@ TEST(PreprocessedFileTest, SkipsWhitespaceBeforeCommentMarker) {
               "Output:\n"
               "keep this\033[31m---SKIPPED 17 tokens---\033[0m\n"
               "\033[31m---SKIPPED 24 tokens---\033[0m\n");
+}
+
+TEST(PreprocessedFileNavigatorTest, AppliesLaterInlineCommentAfterEarlierDirectiveRemoval) {
+    ReplInputObject input(
+        "#import std/math\n"
+        "value = 42 # comment\n",
+        "snippet");
+
+    const auto result = preprocess_file(input);
+    const auto& navigator = result.get_navigator();
+
+    EXPECT_EQ(result.get_output(), "value = 42\n");
+    EXPECT_EQ(navigator.get_original_position(0), 17u);
+    EXPECT_EQ(navigator.get_original_position(9), 26u);
+    EXPECT_EQ(navigator.get_original_position(10), 37u);
+    const auto& skipped_tokens = navigator.get_skipped_tokens();
+    ASSERT_EQ(skipped_tokens.size(), 2u);
+    EXPECT_EQ(skipped_tokens[0].start, 0u);
+    EXPECT_EQ(skipped_tokens[0].num_skipped, 17u);
+    EXPECT_EQ(skipped_tokens[1].start, 10u);
+    EXPECT_EQ(skipped_tokens[1].num_skipped, 10u);
 }
 
 TEST(PreprocessedFileNavigatorTest, ReturnsFileNameAndMapsSkippedRanges) {
