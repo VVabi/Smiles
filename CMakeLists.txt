@@ -49,3 +49,11 @@ target_link_libraries(smiles_tests PRIVATE smiles_lib GTest::gtest_main)
 
 include(GoogleTest)
 gtest_discover_tests(smiles_tests)
+
+add_test(
+    NAME Smiles.PreprocessorDummyOutput
+    COMMAND ${CMAKE_COMMAND}
+        -DTEST_EXECUTABLE=$<TARGET_FILE:smiles>
+        -DTEST_INPUT=${PROJECT_SOURCE_DIR}/examples/dummy.sm
+        -P ${PROJECT_SOURCE_DIR}/tests/assert_dummy_preprocessor_output.cmake
+)
