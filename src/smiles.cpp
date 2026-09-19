@@ -1,4 +1,6 @@
 #include <iostream>
+#include <memory>
+#include <utility>
 
 #include "smiles/core/loop.hpp"
 #include "smiles/options.hpp"

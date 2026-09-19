@@ -1,4 +1,7 @@
 #include <memory>
+#include <string>
+#include <utility>
+
 #include "preprocessor/preprocessor.hpp"
 
 namespace smiles::preprocessor {

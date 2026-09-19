@@ -1,10 +1,10 @@
-#include "smiles/options.hpp"
-
 #include <getopt.h>
 
 #include <array>
 #include <string>
 #include <utility>
+
+#include "smiles/options.hpp"
 
 namespace smiles::options {
 

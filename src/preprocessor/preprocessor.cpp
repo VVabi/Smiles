@@ -3,6 +3,8 @@
 #include <string>
 #include <sstream>
 #include <fstream>
+#include <utility>
+
 #include "preprocessor/preprocessor.hpp"
 
 namespace smiles::preprocessor {
