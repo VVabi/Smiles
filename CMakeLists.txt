@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(FetchContent)
 
 add_library(smiles_lib
+    src/cli.cpp
     src/smiles_lib.cpp
 )
 
