@@ -1,6 +1,12 @@
 # Smiles
 Programming language for learning
 
+## Project Layout
+
+- `include/`: public headers
+- `src/`: production source files
+- `tests/`: test sources
+
 ## Build
 
 ```sh

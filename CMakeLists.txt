@@ -10,6 +10,8 @@ include(FetchContent)
 
 add_library(smiles_lib
     src/smiles_lib.cpp
+    src/preprocessor/preprocessor.cpp
+    src/string_utils/string_utils.cpp
 )
 
 target_include_directories(smiles_lib
@@ -37,7 +39,8 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 
 add_executable(smiles_tests
-    src/smiles_tests.cpp
+    tests/smiles_tests.cpp
+    tests/preprocessor_tests.cpp
 )
 target_link_libraries(smiles_tests PRIVATE smiles_lib GTest::gtest_main)
 
