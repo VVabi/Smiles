@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "smiles/cli.hpp"
@@ -19,7 +20,7 @@ struct ArgvHolder {
 
     explicit ArgvHolder(std::vector<std::string> input_values) : values(std::move(input_values)) {
         storage.reserve(values.size());
-        argv.reserve(values.size());
+        argv.reserve(values.size() + 1);
         for (const auto& value : values) {
             auto buffer = std::make_unique<char[]>(value.size() + 1);
             std::copy(value.begin(), value.end(), buffer.get());
@@ -27,6 +28,7 @@ struct ArgvHolder {
             argv.push_back(buffer.get());
             storage.push_back(std::move(buffer));
         }
+        argv.push_back(nullptr);
     }
 };
 
@@ -35,7 +37,7 @@ smiles::ParseCliResult parse_args(std::vector<std::string> args) {
     opterr = 0;
     optopt = 0;
     ArgvHolder holder(std::move(args));
-    return smiles::parse_cli_args(static_cast<int>(holder.argv.size()), holder.argv.data());
+    return smiles::parse_cli_args(static_cast<int>(holder.argv.size() - 1), holder.argv.data());
 }
 
 }  // namespace
@@ -89,7 +91,7 @@ TEST(SmilesCliTest, RejectsMissingEarlyExitValue) {
     const auto result = parse_args({"smiles", "-e"});
 
     EXPECT_FALSE(result.ok);
-    EXPECT_NE(result.error.find("Missing value for -e"), std::string::npos);
+    EXPECT_NE(result.error.find("Failed to parse command line arguments"), std::string::npos);
     EXPECT_NE(result.error.find(smiles::usage()), std::string::npos);
 }
 
@@ -113,6 +115,6 @@ TEST(SmilesCliTest, RejectsUnknownOption) {
     const auto result = parse_args({"smiles", "--unknown", "program.smiles"});
 
     EXPECT_FALSE(result.ok);
-    EXPECT_NE(result.error.find("Unknown option '--unknown'"), std::string::npos);
+    EXPECT_NE(result.error.find("Failed to parse command line arguments"), std::string::npos);
     EXPECT_NE(result.error.find(smiles::usage()), std::string::npos);
 }

@@ -98,29 +98,18 @@ ParseCliResult parse_cli_args(int argc, char** argv) {
     CliOptions options;
 
     opterr = 0;
-    optind = 1;
+    optind = 0;
 
     int option_index = 0;
-    while (true) {
-        const int parsed_option = getopt_long(argc, argv, short_options, cli_long_options, &option_index);
-        if (parsed_option == -1) {
-            break;
-        }
-
-        switch (parsed_option) {
+    int opt;
+    while ((opt = getopt_long(argc, argv, short_options, cli_long_options, &option_index)) != -1) {
+        switch (opt) {
             case 'e': {
                 const std::string value = optarg;
                 if (!parse_early_exit_stage(value, options.early_exit)) {
                     return make_error("Invalid early exit stage '" + value + "'. Expected: " + join_early_exit_stage_names());
                 }
                 break;
-            }
-            case '?': {
-                const std::string argument = argv[optind - 1];
-                if (argument == "-e" || argument == "--early_exit") {
-                    return make_error("Missing value for " + argument);
-                }
-                return make_error("Unknown option '" + argument + "'");
             }
             default:
                 return make_error("Failed to parse command line arguments");
