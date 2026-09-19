@@ -1,30 +1,109 @@
 #include <vector>
+#include <cctype>
 #include <string>
 #include <sstream>
 #include <fstream>
 #include "preprocessor/preprocessor.hpp"
 
-namespace preprocessor {
+namespace smiles::preprocessor {
 
-std::vector<SkippedTokens> preprocess_file(const std::shared_ptr<FileLikeObject>& file_obj,
-                                            std::string& output,
-                                            std::vector<std::string>& include_paths,
-                                            std::vector<std::string>& using_namespaces) {
-    auto istrm = file_obj->read_stream();
+namespace {
+
+constexpr const char* red_text = "\033[31m";
+constexpr const char* reset_text = "\033[0m";
+
+std::string make_skipped_token_marker(const std::size_t skipped_token_count) {
+    return std::string("---SKIPPED ") + std::to_string(skipped_token_count) +
+           (skipped_token_count == 1 ? " token---" : " tokens---");
+}
+
+void append_skipped_tokens(std::vector<SkippedTokens>& skipped_tokens,
+                           const std::size_t start,
+                           const std::size_t num_skipped) {
+    if (num_skipped == 0) {
+        return;
+    }
+
+    if (!skipped_tokens.empty() && skipped_tokens.back().start + skipped_tokens.back().num_skipped == start) {
+        skipped_tokens.back().num_skipped += num_skipped;
+        return;
+    }
+
+    skipped_tokens.push_back({start, num_skipped});
+}
+
+void append_pretty_print_skipped_tokens(std::vector<PrettyPrintSkippedTokens>& skipped_tokens,
+                                        const std::size_t start,
+                                        const std::size_t num_skipped,
+                                        const bool standalone) {
+    if (num_skipped == 0) {
+        return;
+    }
+
+    if (!skipped_tokens.empty() && skipped_tokens.back().standalone == standalone && skipped_tokens.back().start == start) {
+        skipped_tokens.back().num_skipped += num_skipped;
+        return;
+    }
+
+    skipped_tokens.push_back({start, num_skipped, standalone});
+}
+
+}  // namespace
+
+void PreprocessedFile::pretty_print(std::ostream& output_stream) const {
+    output_stream << "Preprocessed file: " << navigator.get_file_name() << "\n";
+    output_stream << "Skipped characters: " << red_text << skipped_character_count << reset_text << "\n";
+
+    output_stream << "Include paths (" << include_paths.size() << "):\n";
+    for (const auto& include_path : include_paths) {
+        output_stream << "  - " << include_path << "\n";
+    }
+
+    output_stream << "Using namespaces (" << using_namespaces.size() << "):\n";
+    for (const auto& using_namespace : using_namespaces) {
+        output_stream << "  - " << using_namespace << "\n";
+    }
+
+    output_stream << "Output:\n";
+
+    std::size_t output_position = 0;
+    for (const auto& skipped_token : pretty_print_skipped_tokens) {
+        output_stream << output.substr(output_position, skipped_token.start - output_position);
+        output_stream << red_text << make_skipped_token_marker(skipped_token.num_skipped) << reset_text;
+        if (skipped_token.standalone) {
+            output_stream << "\n";
+        }
+        output_position = skipped_token.start;
+    }
+
+    output_stream << output.substr(output_position);
+}
+
+PreprocessedFile preprocess_file(const FileLikeObject& file_obj) {
+    auto istrm = file_obj.read_stream();
     std::stringstream output_strm;
     std::vector<SkippedTokens> skipped_tokens;
+    std::vector<PrettyPrintSkippedTokens> pretty_print_skipped_tokens;
+    std::vector<std::string> include_paths;
+    std::vector<std::string> using_namespaces;
+    std::size_t skipped_character_count = 0;
     std::string line;
     std::size_t current_position = 0;
+    std::size_t output_position = 0;
     std::size_t last_output_end_position = 0;
     bool has_output = false;
     const std::string import_marker = "#import ";
     const std::string using_marker = "#using ";
     while (std::getline(*istrm, line)) {
+        const std::size_t line_start = current_position;
+
         if (line.rfind(import_marker, 0) == 0) {
             auto path = line.substr(import_marker.size());  // Extract the path after #import (including space)
             // TODO(vabi): trim whitespaces from path
             include_paths.push_back(path);
-            skipped_tokens.push_back({current_position, line.size()});
+            append_skipped_tokens(skipped_tokens, line_start, line.size() + 1);
+            skipped_character_count += line.size() + 1;
+            append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, line.size() + 1, true);
             current_position += line.size() + 1;  // +1 for the newline character
             continue;
         }
@@ -33,20 +112,48 @@ std::vector<SkippedTokens> preprocess_file(const std::shared_ptr<FileLikeObject>
             auto ns = line.substr(using_marker.size());  // Extract the namespace after #using (including space)
             // TODO(vabi): trim whitespaces from ns
             using_namespaces.push_back(ns);
-            skipped_tokens.push_back({current_position, line.size()});
+            append_skipped_tokens(skipped_tokens, line_start, line.size() + 1);
+            skipped_character_count += line.size() + 1;
+            append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, line.size() + 1, true);
             current_position += line.size() + 1;  // +1 for the newline character
             continue;
         }
 
         const std::size_t comment_position = line.find('#');
         if (comment_position != std::string::npos) {
-            skipped_tokens.push_back({current_position + comment_position, line.size() - comment_position});
-            if (comment_position > 0) {
-                output_strm << line.substr(0, comment_position) << "\n";
+            std::size_t skipped_prefix_start = comment_position;
+            while (skipped_prefix_start > 0 && (line[skipped_prefix_start - 1] == ' ' || line[skipped_prefix_start - 1] == '\t')) {
+                --skipped_prefix_start;
+            }
+
+            bool has_non_whitespace_prefix = false;
+            for (std::size_t index = 0; index < skipped_prefix_start; ++index) {
+                if (!std::isspace(static_cast<unsigned char>(line[index]))) {
+                    has_non_whitespace_prefix = true;
+                    break;
+                }
+            }
+
+            if (!has_non_whitespace_prefix) {
+                append_skipped_tokens(skipped_tokens, line_start, line.size() + 1);
+                skipped_character_count += line.size() + 1;
+                append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, line.size() + 1, true);
+            } else {
+                append_skipped_tokens(skipped_tokens, line_start + skipped_prefix_start, line.size() - skipped_prefix_start);
+                skipped_character_count += line.size() - skipped_prefix_start + 1;
+                append_pretty_print_skipped_tokens(pretty_print_skipped_tokens,
+                                                   output_position + skipped_prefix_start,
+                                                   line.size() - skipped_prefix_start + 1,
+                                                   false);
+            }
+
+            if (has_non_whitespace_prefix) {
+                output_strm << line.substr(0, skipped_prefix_start) << "\n";
+                output_position += skipped_prefix_start + 1;
                 has_output = true;
             }
             current_position += line.size() + 1;  // +1 for the newline character
-            if (comment_position > 0) {
+            if (has_non_whitespace_prefix) {
                 last_output_end_position = current_position;
             }
             continue;
@@ -54,22 +161,24 @@ std::vector<SkippedTokens> preprocess_file(const std::shared_ptr<FileLikeObject>
 
         current_position += line.size() + 1;  // +1 for the newline character
         if (line.empty()) {
-            // Empty line, just add a newline character
-            output_strm << "\n";
-            has_output = true;
-            last_output_end_position = current_position;
+            append_skipped_tokens(skipped_tokens, line_start, 1);
+            skipped_character_count += 1;
+            append_pretty_print_skipped_tokens(pretty_print_skipped_tokens, output_position, 1, true);
             continue;
         }
 
         output_strm << line << "\n";
+        output_position += line.size() + 1;
         has_output = true;
         last_output_end_position = current_position;
     }
-    output = output_strm.str();
-    while (has_output && !skipped_tokens.empty() && skipped_tokens.back().start >= last_output_end_position) {
-        skipped_tokens.pop_back();
-    }
-    return skipped_tokens;
+
+    return PreprocessedFile(output_strm.str(),
+                            std::move(include_paths),
+                            std::move(using_namespaces),
+                            PreprocessedFileNavigator(file_obj.get_name(), std::move(skipped_tokens)),
+                            skipped_character_count,
+                            std::move(pretty_print_skipped_tokens));
 }
 
-}  // namespace preprocessor
+}  // namespace smiles::preprocessor

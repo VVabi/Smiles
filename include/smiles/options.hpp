@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace smiles {
+namespace smiles::options {
 
 enum class EarlyExitStage {
     none,
@@ -25,4 +25,4 @@ struct ParseCliResult {
 std::string usage();
 ParseCliResult parse_cli_args(int argc, char** argv);
 
-}  // namespace smiles
+}  // namespace smiles::options

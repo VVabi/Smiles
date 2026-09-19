@@ -11,6 +11,8 @@ include(FetchContent)
 add_library(smiles_lib
     src/cli.cpp
     src/smiles_lib.cpp
+    src/smiles_core_loop.cpp
+    src/preprocessor/input_factory.cpp
     src/preprocessor/preprocessor.cpp
     src/string_utils/string_utils.cpp
 )

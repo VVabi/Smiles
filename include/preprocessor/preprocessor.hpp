@@ -6,10 +6,22 @@
 #include <utility>
 #include <fstream>
 #include <iterator>
+#include <ostream>
 #include <stdexcept>
 #include <sstream>
+#include "smiles/options.hpp"
 
-namespace preprocessor {
+namespace smiles::preprocessor {
+
+class FileLikeObject;
+
+class InputGenerator {
+ public:
+    virtual ~InputGenerator() = default;
+    virtual std::unique_ptr<FileLikeObject> get_next() = 0;
+};
+
+std::unique_ptr<InputGenerator> get_input_generator(const smiles::options::CliOptions& options);
 
 /**
  * Common interface for objects that expose file-like input to the preprocessor.
@@ -108,10 +120,11 @@ struct SkippedTokens {
     std::size_t num_skipped;
 };
 
-std::vector<SkippedTokens> preprocess_file(const std::shared_ptr<FileLikeObject>& file_obj,
-                                           std::string& output,
-                                           std::vector<std::string>& include_paths,
-                                           std::vector<std::string>& using_namespaces);
+struct PrettyPrintSkippedTokens {
+    std::size_t start;
+    std::size_t num_skipped;
+    bool standalone;
+};
 
 /**
  * Maps positions in preprocessed output back to positions in the original input.
@@ -140,6 +153,10 @@ class PreprocessedFileNavigator {
         return file_name;
     }
 
+    const std::vector<SkippedTokens>& get_skipped_tokens() const {
+        return skipped_tokens;
+    }
+
     /**
      * Converts a position in preprocessed output to its original input position.
      */
@@ -155,4 +172,51 @@ class PreprocessedFileNavigator {
     }
 };
 
-}  // namespace preprocessor
+class PreprocessedFile {
+    std::string output;
+    std::vector<std::string> include_paths;
+    std::vector<std::string> using_namespaces;
+    PreprocessedFileNavigator navigator;
+    std::size_t skipped_character_count;
+    std::vector<PrettyPrintSkippedTokens> pretty_print_skipped_tokens;
+
+ public:
+    PreprocessedFile(std::string output,
+                     std::vector<std::string>&& include_paths,
+                     std::vector<std::string>&& using_namespaces,
+                     PreprocessedFileNavigator&& navigator,
+                     const std::size_t skipped_character_count,
+                     std::vector<PrettyPrintSkippedTokens>&& pretty_print_skipped_tokens)
+            : output(std::move(output)),
+              include_paths(std::move(include_paths)),
+              using_namespaces(std::move(using_namespaces)),
+              navigator(std::move(navigator)),
+              skipped_character_count(skipped_character_count),
+              pretty_print_skipped_tokens(std::move(pretty_print_skipped_tokens)) {}
+
+    const std::string& get_output() const {
+        return output;
+    }
+
+    const std::vector<std::string>& get_include_paths() const {
+        return include_paths;
+    }
+
+    const std::vector<std::string>& get_using_namespaces() const {
+        return using_namespaces;
+    }
+
+    const PreprocessedFileNavigator& get_navigator() const {
+        return navigator;
+    }
+
+    std::size_t get_skipped_character_count() const {
+        return skipped_character_count;
+    }
+
+    void pretty_print(std::ostream& output_stream) const;
+};
+
+PreprocessedFile preprocess_file(const FileLikeObject& file_obj);
+
+}  // namespace smiles::preprocessor

@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "smiles/cli.hpp"
+#include "smiles/options.hpp"
 #include "smiles/smiles.h"
 
 namespace {
@@ -32,12 +32,12 @@ struct ArgvHolder {
     }
 };
 
-smiles::ParseCliResult parse_args(std::vector<std::string> args) {
+smiles::options::ParseCliResult parse_args(std::vector<std::string> args) {
     optind = 1;
     opterr = 0;
     optopt = 0;
     ArgvHolder holder(std::move(args));
-    return smiles::parse_cli_args(static_cast<int>(holder.argv.size() - 1), holder.argv.data());
+    return smiles::options::parse_cli_args(static_cast<int>(holder.argv.size() - 1), holder.argv.data());
 }
 
 }  // namespace
@@ -51,7 +51,7 @@ TEST(SmilesTest, IsLearningProject) {
 }
 
 TEST(SmilesCliTest, UsageMatchesExpectedFormat) {
-    EXPECT_EQ(smiles::usage(), "Usage: smiles [-e|--early_exit {preprocessor|lexer|ast}] [path_to_file]");
+    EXPECT_EQ(smiles::options::usage(), "Usage: smiles [-e|--early_exit {preprocessor|lexer|ast}] [path_to_file]");
 }
 
 TEST(SmilesCliTest, RejectsMissingInputFilePath) {
@@ -59,7 +59,7 @@ TEST(SmilesCliTest, RejectsMissingInputFilePath) {
 
     EXPECT_FALSE(result.ok);
     EXPECT_NE(result.error.find("Missing input file path"), std::string::npos);
-    EXPECT_NE(result.error.find(smiles::usage()), std::string::npos);
+    EXPECT_NE(result.error.find(smiles::options::usage()), std::string::npos);
 }
 
 TEST(SmilesCliTest, AcceptsSinglePathArgument) {
@@ -67,7 +67,7 @@ TEST(SmilesCliTest, AcceptsSinglePathArgument) {
 
     ASSERT_TRUE(result.ok);
     EXPECT_EQ(result.options.path_to_file, "program.smiles");
-    EXPECT_EQ(result.options.early_exit, smiles::EarlyExitStage::none);
+    EXPECT_EQ(result.options.early_exit, smiles::options::EarlyExitStage::none);
     EXPECT_TRUE(result.error.empty());
 }
 
@@ -76,14 +76,14 @@ TEST(SmilesCliTest, AcceptsShortEarlyExitOption) {
 
     ASSERT_TRUE(result.ok);
     EXPECT_EQ(result.options.path_to_file, "program.smiles");
-    EXPECT_EQ(result.options.early_exit, smiles::EarlyExitStage::lexer);
+    EXPECT_EQ(result.options.early_exit, smiles::options::EarlyExitStage::lexer);
 }
 
 TEST(SmilesCliTest, AcceptsLongEarlyExitOptionAndPath) {
     const auto result = parse_args({"smiles", "--early_exit", "ast", "program.smiles"});
 
     ASSERT_TRUE(result.ok);
-    EXPECT_EQ(result.options.early_exit, smiles::EarlyExitStage::ast);
+    EXPECT_EQ(result.options.early_exit, smiles::options::EarlyExitStage::ast);
     EXPECT_EQ(result.options.path_to_file, "program.smiles");
 }
 
@@ -92,7 +92,7 @@ TEST(SmilesCliTest, RejectsMissingEarlyExitValue) {
 
     EXPECT_FALSE(result.ok);
     EXPECT_NE(result.error.find("Failed to parse command line arguments"), std::string::npos);
-    EXPECT_NE(result.error.find(smiles::usage()), std::string::npos);
+    EXPECT_NE(result.error.find(smiles::options::usage()), std::string::npos);
 }
 
 TEST(SmilesCliTest, RejectsInvalidEarlyExitValue) {
@@ -100,7 +100,7 @@ TEST(SmilesCliTest, RejectsInvalidEarlyExitValue) {
 
     EXPECT_FALSE(result.ok);
     EXPECT_NE(result.error.find("Invalid early exit stage 'bad'"), std::string::npos);
-    EXPECT_NE(result.error.find(smiles::usage()), std::string::npos);
+    EXPECT_NE(result.error.find(smiles::options::usage()), std::string::npos);
 }
 
 TEST(SmilesCliTest, RejectsMultiplePathArguments) {
@@ -108,7 +108,7 @@ TEST(SmilesCliTest, RejectsMultiplePathArguments) {
 
     EXPECT_FALSE(result.ok);
     EXPECT_NE(result.error.find("Expected a single input file path"), std::string::npos);
-    EXPECT_NE(result.error.find(smiles::usage()), std::string::npos);
+    EXPECT_NE(result.error.find(smiles::options::usage()), std::string::npos);
 }
 
 TEST(SmilesCliTest, RejectsUnknownOption) {
@@ -116,5 +116,5 @@ TEST(SmilesCliTest, RejectsUnknownOption) {
 
     EXPECT_FALSE(result.ok);
     EXPECT_NE(result.error.find("Failed to parse command line arguments"), std::string::npos);
-    EXPECT_NE(result.error.find(smiles::usage()), std::string::npos);
+    EXPECT_NE(result.error.find(smiles::options::usage()), std::string::npos);
 }
