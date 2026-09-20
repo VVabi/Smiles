@@ -57,3 +57,15 @@ add_test(
         -DTEST_INPUT=${PROJECT_SOURCE_DIR}/tests/test_resources/dummy.sm
         -P ${PROJECT_SOURCE_DIR}/tests/assert_dummy_preprocessor_output.cmake
 )
+
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+
+add_test(
+    NAME Smiles.NamespaceDependenciesAcyclic
+    COMMAND ${Python3_EXECUTABLE}
+        ${PROJECT_SOURCE_DIR}/scripts/namespace_deps.py
+        --root ${PROJECT_SOURCE_DIR}
+        --fail-on-cycle
+        --scan-dir include
+        --scan-dir src
+)
