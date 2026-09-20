@@ -1,0 +1,5 @@
+#import lalalala
+
+# some comment
+println(7) # another comment
+println(3)

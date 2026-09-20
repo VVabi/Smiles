@@ -1,12 +1,12 @@
-#include "smiles/cli.hpp"
-
 #include <getopt.h>
 
 #include <array>
 #include <string>
 #include <utility>
 
-namespace smiles {
+#include "smiles/options.hpp"
+
+namespace smiles::options {
 
 namespace {
 
@@ -129,4 +129,4 @@ ParseCliResult parse_cli_args(int argc, char** argv) {
     return {true, std::move(options), ""};
 }
 
-}  // namespace smiles
+}  // namespace smiles::options
